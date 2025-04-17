@@ -3,11 +3,6 @@ declare(strict_types=1);
 
 class MicroApp {
     private array $routes = [];
-    private string $basePath = '';
-
-    public function __construct(string $basePath = '') {
-        $this->basePath = rtrim($basePath, '/');
-    }
 
     public function get(string $route, callable $handler): void {
         $this->routes['GET'][$this->normalize($route)] = $handler;
@@ -20,7 +15,7 @@ class MicroApp {
     public function dispatch(): void {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/';
-        $path = $this->normalize(str_replace($this->basePath, '', $path));
+        $path = $this->normalize($path);
 
         foreach ($this->routes[$method] ?? [] as $route => $handler) {
             $params = [];

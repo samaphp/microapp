@@ -12,6 +12,18 @@ class MicroApp {
         $this->routes['POST'][$this->normalize($route)] = $handler;
     }
 
+    public function put(string $route, callable $handler): void {
+        $this->routes['PUT'][$this->normalize($route)] = $handler;
+    }
+
+    public function delete(string $route, callable $handler): void {
+        $this->routes['DELETE'][$this->normalize($route)] = $handler;
+    }
+
+    public function patch(string $route, callable $handler): void {
+        $this->routes['PATCH'][$this->normalize($route)] = $handler;
+    }
+
     public function dispatch(): void {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);

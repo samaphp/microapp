@@ -31,6 +31,11 @@ class MicroApp {
         $this->routes['PATCH'][$this->normalize($route)] = $handler;
     }
 
+    public function getAllRoutes(): array
+    {
+        return $this->routes;
+    }
+
     public function loadRoutesFrom(string $directory, string $namespace): void {
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
             if ($file->getExtension() !== 'php') {

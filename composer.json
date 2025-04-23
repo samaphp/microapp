@@ -1,0 +1,14 @@
+{
+    "name": "samaphp/microapp",
+    "description": "A minimal PHP microframework router.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "MicroApp\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4"
+    }
+}

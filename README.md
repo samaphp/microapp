@@ -28,6 +28,7 @@ This will:
 
 ### Extra
 - Create your controller: `php vendor/samaphp/microapp/bin/make-controller.php HomeController`
+- List all defined routes: `php vendor/samaphp/microapp/bin/route-list.php`
 
 ## 🔀 basePath Support
 If your application is served from a subdirectory (e.g., example.com/myapp/), you can pass the base path to MicroApp during initialization:

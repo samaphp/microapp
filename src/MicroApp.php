@@ -31,6 +31,24 @@ class MicroApp {
         $this->routes['PATCH'][$this->normalize($route)] = $handler;
     }
 
+    public function loadRoutesFrom(string $directory, string $namespace): void {
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
+            if (class_exists($class) && method_exists($class, 'routes')) {
+                $class::routes($this);
+            }
+        }
+    }
+
+    private function getClassFromFile(string $path, string $baseDir, string $namespace): string {
+        $relative = str_replace([$baseDir, '/', '.php'], ['', '\\', ''], $path);
+        return rtrim($namespace . '\\' . ltrim($relative, '\\'), '\\');
+    }
+
     public function dispatch(): void {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);

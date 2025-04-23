@@ -42,9 +42,14 @@ use MicroApp\MicroApp;
 
 class {$controllerClass}
 {
-    public static function routes(MicroApp \$app): void
+    public function routes(MicroApp \$app): void
     {
-        \$app->get('/{$routeName}', fn() => print 'Hello from {$controllerClass}');
+        \$app->get('/{$routeName}', [\$this, 'index']);
+    }
+
+    public function index(): void
+    {
+        echo 'Hello from {$controllerClass}';
     }
 }
 PHP;

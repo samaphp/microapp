@@ -25,8 +25,9 @@ This will:
 ## 🚀 Getting Started
 - Install via Composer: `composer require samaphp/microapp`
 - Scaffold your app (autoload controllers + .htaccess + index.php): `php vendor/samaphp/microapp/bin/init.php`
+
+### Extra
 - Create your controller: `php vendor/samaphp/microapp/bin/make-controller.php HomeController`
-- Boot your app:
 
 ## 🔀 basePath Support
 If your application is served from a subdirectory (e.g., example.com/myapp/), you can pass the base path to MicroApp during initialization:

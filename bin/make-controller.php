@@ -2,8 +2,8 @@
 <?php
 
 if ($argc < 2) {
-    echo "❌ Usage: php make-controller.php ControllerClassName\n";
-    echo "   Example: php make-controller.php HomeController\n";
+    echo "❌ Usage: php make-controller.php ControllerClassName [route]\n";
+    echo "   Example: php make-controller.php HomeController /home\n";
     exit(1);
 }
 
@@ -19,8 +19,21 @@ $namespace = 'App\\Controller';
 $dir = getcwd() . '/src/Controller';
 $file = "$dir/{$controllerClass}.php";
 
-// Route path: lowercase + remove "Controller" suffix
-$routeName = strtolower(substr($controllerClass, 0, -10));
+$defaultRoute = '/' . strtolower(substr($controllerClass, 0, -10));
+$route = $argv[2] ?? $defaultRoute;
+
+if (substr($route, 0, 1) !== '/') {
+    echo "❌ Route must start with '/'.\n";
+    echo "   Example: php make-controller.php HomeController /home\n";
+    exit(1);
+}
+
+// validate route it is real web route
+if (preg_match('/[^a-zA-Z0-9\/]/', $route)) {
+    echo "❌ Route must only contain letters, numbers, and '/'.\n";
+    echo "   Example: php make-controller.php HomeController /home\n";
+    exit(1);
+}
 
 if (!is_dir($dir)) {
     mkdir($dir, 0755, true);
@@ -44,7 +57,7 @@ class {$controllerClass}
 {
     public function routes(MicroApp \$app): void
     {
-        \$app->get('/{$routeName}', [\$this, 'index']);
+        \$app->get('{$route}', [\$this, 'index']);
     }
 
     public function index(): void

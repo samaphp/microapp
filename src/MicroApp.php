@@ -93,6 +93,21 @@ class MicroApp {
         return true;
     }
 
+    public static function input(string $key, string $method = 'GET', string $filter = 'string'): ?string {
+        static $json;
+        $method = strtoupper($method);
+        $sources = [
+            'GET' => $_GET, 'POST' => $_POST,
+            'JSON' => $json = $json !== null ? $json : (json_decode(file_get_contents('php://input'), true) ?: []),
+            'HEADER' => function_exists('getallheaders') ? getallheaders() : []
+        ];
+        $val = $sources[$method][$key] ?? null;
+        return $filter === 'int' ? (filter_var($val, FILTER_VALIDATE_INT) !== false ? (string)(int)$val : null)
+            : ($filter === 'email' ? filter_var($val, FILTER_VALIDATE_EMAIL) ?: null
+                : ($filter === 'url' ? filter_var($val, FILTER_VALIDATE_URL) ?: null
+                    : htmlspecialchars(trim((string)$val), ENT_QUOTES, 'UTF-8')));
+    }
+
     public static function json(array $data, int $statusCode = 200): void {
         http_response_code($statusCode);
         header('Content-Type: application/json');

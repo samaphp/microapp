@@ -100,17 +100,17 @@ class MicroApp {
     }
 
     private function match(string $route, string $path, array &$params): bool {
-        $r = explode('/', trim($route, '/'));
-        $p = explode('/', trim($path, '/'));
-        if (count($r) !== count($p)) return false;
-        foreach ($r as $i => $part) {
+        $routeParts = explode('/', trim($route, '/'));
+        $pathParts = explode('/', trim($path, '/'));
+        if (count($routeParts) !== count($pathParts)) return false;
+        foreach ($routeParts as $i => $part) {
             if (preg_match('/^{(\w+)(?::(\w+))?}$/', $part, $m)) {
                 $type = $m[2] ?? 'string';
-                if ($type === 'int' && !preg_match('/^\d+$/', $p[$i])) return false;
-                if ($type === 'string' && !preg_match('/^[a-zA-Z0-9\-_]+$/', $p[$i])) return false;
+                if ($type === 'int' && !preg_match('/^\d+$/', $pathParts[$i])) return false;
+                if ($type === 'string' && !preg_match('/^[a-zA-Z0-9\-_]+$/', $pathParts[$i])) return false;
                 if ($type !== 'int' && $type !== 'string') throw new \InvalidArgumentException("Unsupported route param type: $type");
-                $params[] = $p[$i];
-            } elseif ($part !== $p[$i]) return false;
+                $params[] = $pathParts[$i];
+            } elseif ($part !== $pathParts[$i]) return false;
         }
         return true;
     }

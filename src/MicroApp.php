@@ -55,21 +55,39 @@ class MicroApp {
     }
 
     public function dispatch(): void {
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-        $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
-        $path = $this->normalize($path);
+        try {
+            $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+            $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+            $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
+            $path = $this->normalize($path);
 
-        foreach ($this->routes[$method] ?? [] as $route => $handler) {
-            $params = [];
-            if ($this->match($route, $path, $params)) {
-                $handler(...$params);
-                return;
+            foreach ($this->routes[$method] ?? [] as $route => $handler) {
+                $params = [];
+                if ($this->match($route, $path, $params)) {
+                    $handler(...$params);
+                    return;
+                }
             }
-        }
 
-        http_response_code(404);
-        echo '404 Not Found';
+            http_response_code(404);
+            echo '404 Not Found';
+        } catch (\Throwable $e) {
+            $this->handleException($e);
+        }
+    }
+
+    private function handleException(\Throwable $e): void {
+        $id = substr(md5($e->getFile() . $e->getLine() . $e->getMessage() . microtime()), 0, 12);
+        $response = ['error' => [
+            'error_id' => $id,
+            'code' => 500,
+            'message' => 'Internal Server Error',
+            'trace' => (defined('APP_DEBUG') && APP_DEBUG) ? (string)$e : null
+        ]];
+        $log = $response;
+        $log['error']['trace'] = (string)$e;
+        error_log("[" . date('Y-m-d H:i:s') . "] " . json_encode($log, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $this->json($response, 500);
     }
 
     private function normalize(string $path): string {

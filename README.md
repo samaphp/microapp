@@ -13,11 +13,6 @@ Built for developers who prefer clarity, control, and zero framework overhead.
 - ✅ Auto-discovery of controller classes with route definitions inside the class itself
 - ✅ Optional CLI available via the `microapp-dev` package
 
-This will:
-- ✅ Inject App\\ => src/ into composer.json if missing
-- ✅ Copy .htaccess.microapp to .htaccess if not already present
-- ✅ Run composer dump-autoload to finalize setup
-
 ## 🚀 Getting Started
 - Install via Composer: `composer require samaphp/microapp`
 - You can set things up manually (see sections below) or automate it using the `microapp-dev` package from the Developer Tools section.

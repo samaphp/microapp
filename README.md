@@ -11,11 +11,7 @@ Built for developers who prefer clarity, control, and zero framework overhead.
 - ✅ Simple and readable one-file implementation
 - ✅ Ready to be used as a Composer package
 - ✅ Auto-discovery of controller classes with route definitions inside the class itself
-- ✅ Built-in CLI to initialize `.htaccess` and autoload mapping
-
-## ⚙️ Developer Experience
-MicroApp ships with CLI tools to help you get started faster:
-`php vendor/samaphp/microapp/bin/init.php`
+- ✅ Optional CLI available via the `microapp-dev` package
 
 This will:
 - ✅ Inject App\\ => src/ into composer.json if missing
@@ -24,11 +20,12 @@ This will:
 
 ## 🚀 Getting Started
 - Install via Composer: `composer require samaphp/microapp`
-- Scaffold your app (autoload controllers + .htaccess + index.php): `php vendor/samaphp/microapp/bin/init.php`
+- You can set things up manually (see sections below) or automate it using the `microapp-dev` package from the Developer Tools section.
 
-### Extra
-- Create your controller: `php vendor/samaphp/microapp/bin/make-controller.php HomeController`
-- List all defined routes: `php vendor/samaphp/microapp/bin/route-list.php`
+## 🛠️ Developer Tools
+Looking to scaffold `.htaccess`, `index.php`, or generate controllers?  
+Use the official companion package:  
+➡️ [`samaphp/microapp-dev`](https://github.com/samaphp/microapp-dev)
 
 ## 🔀 basePath Support
 If your application is served from a subdirectory (e.g., example.com/myapp/), you can pass the base path to MicroApp during initialization:
@@ -39,6 +36,21 @@ $app = new MicroApp('/myapp');
 This ensures all routes are matched correctly regardless of where your app is hosted.
 
     📌 You must also update your .htaccess rewrite rule to reflect the same subdirectory.
+
+## 🟦 .htaccess example
+```
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Enable this to support subdirectory installations after injecting basePath value to MicroApp('basePathHere')
+  #RewriteBase /basePathHere/
+
+  # Redirect everything except existing files and directories to index.php
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+```
 
 ## 🟦 index.php Example
 The auto generated `index.php` will be like this:
@@ -79,7 +91,6 @@ class HomeController
 
 MicroApp is still in active development and will reach stability by **May 1st, 2025**.
 
-- The current CLI tooling is evolving and will soon be moved to a separate `microapp-dev` package, intended for `require-dev` only.
 - The codebase will undergo review by security analysis tools to ensure best practices and safeguard production use.
 
 You're welcome to try it today — just note that APIs and folder structure may still slightly change.

@@ -1,7 +1,8 @@
 # microapp
 MicroApp is a minimal PHP 7.4+ microframework for building super-microservices with clean routing and zero dependencies.
 Perfect for fast bootstraps, tiny APIs, internal tools, or focused endpoints where simplicity wins.
-Built for developers who prefer clarity, control, and zero framework overhead.
+Designed for developers who value clarity, control, zero framework overhead and long-term maintainability.
+Built for microservices that can live for decades without requiring upgrades or major refactors. You’re encouraged to follow future-proof design principles when building on top of it.
 
 ## 🌟 Features
 - ✅ `GET`, `POST`, `PUT`, `DELETE`, and `PATCH` method support
@@ -111,10 +112,60 @@ Parameters:
 - `method`: One of 'GET', 'POST', 'JSON', or 'HEADER'.
 - `filter`: Sanitization type: 'string', 'int' or 'email'.
 
+## 🛣️ Roadmap
+MicroApp aims to remain minimal and dependency-free while gradually improving developer experience and production readiness.
+
+### ✅ Core Roadmap
+
+- 🔹 **Middleware (before/after)** for logging, authentication, CSRF protection, and other cross-cutting concerns
+- 🔹 **PHP 8+ Compatibility Check** — audit for deprecated functions to ensure forward compatibility
+- 🔹 **SQLite Support** for lightweight, embedded persistence (potentially via a dedicated utility package)
+- 🔹 **File Storage / Upload Handling** for managing uploaded files and saving them to disk  (potentially via a dedicated utility package)
+
+### 🧠 Under Consideration
+
+These features are being explored and may be added if they fit the minimalist design:
+
+- 🔸 **Route Grouping / Prefixing** for modular organization (e.g., `/api/v1`)
+- 🔸 **Route Caching** to speed up route resolution (no external dependencies)
+- 🔸 **Service Container or DI** for clean dependency injection in handlers
+- 🔸 **Static File Serving / File Upload Handling** — define usage and scope
+- 🔸 **Logging Integration** via a simple `log()` method or PSR-3 support
+
+## ⚖️ Tradeoffs
+
+MicroApp intentionally leaves out features that are outside its core responsibility as a router. This keeps the framework lightweight, dependency-free, and easy to reason about.
+
+### ❌ Not handled by design
+
+- **Authentication & Authorization**  
+  You are free to implement auth logic using your own classes or middleware.
+
+- **CSRF Protection**  
+  CSRF validation should be enforced at the application level, not in the router.
+
+- **Session Management**  
+  MicroApp does not handle PHP sessions or session storage by default.
+
+- **Rate Limiting**  
+  Should be implemented at the proxy (e.g. NGINX, Cloudflare) or middleware level.
+
+- **Output Rendering (Templates/Views)**  
+  MicroApp is designed for APIs and microservices, not traditional HTML applications. Template engines are out of scope — return raw JSON, plain text, or HTML directly as needed.
+
+- **Advanced Database Abstraction / ORM**  
+  MicroApp doesn’t include a database layer or ORM. You can use PDO directly or integrate any lightweight ORM as needed.
+
+These tradeoffs allow MicroApp to stay focused, composable, and small — making it ideal for microservices, APIs, and focused backends.
+
+### 🚫 Deferred by Design
+
+The following are intentionally left out of the core to preserve MicroApp’s no-dependency philosophy:
+
+- ❌ **Config File Support** Loading `.env` files or configuration files is out of scope for the core. If needed, you can use a community-maintained package such as `vlucas/phpdotenv`.
+
+
 ## 🚧 Disclaimer
 
-MicroApp is still in active development and will reach stability by **May 1st, 2025**.
-
-- The codebase will undergo review by security analysis tools to ensure best practices and safeguard production use.
-
-You're welcome to try it today — just note that APIs and folder structure may still slightly change.
+- MicroApp is considered stable for use in real projects, though it has not yet reached version `1.0.0`. APIs are unlikely to change significantly, but some refinements may still occur as the ecosystem evolves.
+- The codebase has been reviewed with security scanning tools, and fixes have been applied to address identified concerns. Ongoing best-practice audits will continue to ensure safe use in production environments.

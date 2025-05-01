@@ -42,9 +42,13 @@ class MicroApp {
                 continue;
             }
 
-            $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
-            if (class_exists($class) && method_exists($class, 'routes')) {
-                (new $class())->routes($this);
+            try {
+                $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
+                if (class_exists($class) && method_exists($class, 'routes')) {
+                    (new $class())->routes($this);
+                }
+            } catch (\Throwable $e) {
+                $this->handleException($e);
             }
         }
     }
@@ -55,21 +59,39 @@ class MicroApp {
     }
 
     public function dispatch(): void {
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-        $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
-        $path = $this->normalize($path);
+        try {
+            $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+            $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+            $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
+            $path = $this->normalize($path);
 
-        foreach ($this->routes[$method] ?? [] as $route => $handler) {
-            $params = [];
-            if ($this->match($route, $path, $params)) {
-                $handler(...$params);
-                return;
+            foreach ($this->routes[$method] ?? [] as $route => $handler) {
+                $params = [];
+                if ($this->match($route, $path, $params)) {
+                    $handler(...$params);
+                    return;
+                }
             }
-        }
 
-        http_response_code(404);
-        echo '404 Not Found';
+            http_response_code(404);
+            echo '404 Not Found';
+        } catch (\Throwable $e) {
+            $this->handleException($e);
+        }
+    }
+
+    private function handleException(\Throwable $e): void {
+        $id = substr(md5($e->getFile() . $e->getLine() . $e->getMessage() . microtime()), 0, 12);
+        $response = ['error' => [
+            'error_id' => $id,
+            'code' => 500,
+            'message' => 'Internal Server Error',
+            'trace' => (defined('APP_DEBUG') && APP_DEBUG) ? (string)$e : null
+        ]];
+        $log = $response;
+        $log['error']['trace'] = (string)$e;
+        error_log("[" . date('Y-m-d H:i:s') . "] " . json_encode($log, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $this->json($response, 500);
     }
 
     private function normalize(string $path): string {
@@ -80,20 +102,32 @@ class MicroApp {
     private function match(string $route, string $path, array &$params): bool {
         $routeParts = explode('/', trim($route, '/'));
         $pathParts = explode('/', trim($path, '/'));
-
-        if (count($routeParts) !== count($pathParts)) {
-            return false;
-        }
-
+        if (count($routeParts) !== count($pathParts)) return false;
         foreach ($routeParts as $i => $part) {
-            if (preg_match('/^{\w+}$/', $part)) {
+            if (preg_match('/^{(\w+)(?::(\w+))?}$/', $part, $m)) {
+                $type = $m[2] ?? 'string';
+                if ($type === 'int' && !preg_match('/^\d+$/', $pathParts[$i])) return false;
+                if ($type === 'string' && !preg_match('/^[a-zA-Z0-9\-_]+$/', $pathParts[$i])) return false;
+                if ($type !== 'int' && $type !== 'string') throw new \InvalidArgumentException("Unsupported route param type: $type");
                 $params[] = $pathParts[$i];
-            } elseif ($part !== $pathParts[$i]) {
-                return false;
-            }
+            } elseif ($part !== $pathParts[$i]) return false;
         }
-
         return true;
+    }
+
+    public static function input(string $key, string $method = 'GET', string $filter = 'string'): ?string {
+        static $json;
+        $method = strtoupper($method);
+        $sources = [
+            'GET' => $_GET, 'POST' => $_POST,
+            'JSON' => $json = $json !== null ? $json : (json_decode(file_get_contents('php://input'), true) ?: []),
+            'HEADER' => function_exists('getallheaders') ? getallheaders() : []
+        ];
+        $val = $sources[$method][$key] ?? null;
+        return $filter === 'int' ? (filter_var($val, FILTER_VALIDATE_INT) !== false ? (string)(int)$val : null)
+            : ($filter === 'email' ? filter_var($val, FILTER_VALIDATE_EMAIL) ?: null
+                : ($filter === 'url' ? filter_var($val, FILTER_VALIDATE_URL) ?: null
+                    : htmlspecialchars(trim((string)$val), ENT_QUOTES, 'UTF-8')));
     }
 
     public static function json(array $data, int $statusCode = 200): void {

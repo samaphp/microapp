@@ -82,6 +82,23 @@ class HomeController
 }
 ```
 
+## 🔽 Accessing Request Input
+You can use `MicroApp::input()` to safely retrieve and sanitize input from various sources:
+
+Usage:
+```php
+$name = MicroApp::input('name'); // GET by default
+$email = MicroApp::input('email', 'POST', 'email');
+$id = MicroApp::input('user_id', 'JSON', 'int');
+$token = MicroApp::input('Authorization', 'HEADER');
+
+MicroApp::input(string $key, string $method = 'GET', string $filter = 'string')
+```
+Parameters:
+- `key`: The input name to fetch.
+- `method`: One of 'GET', 'POST', 'JSON', or 'HEADER'.
+- `filter`: Sanitization type: 'string', 'int' or 'email'.
+
 ## 🚧 Disclaimer
 
 MicroApp is still in active development and will reach stability by **May 1st, 2025**.

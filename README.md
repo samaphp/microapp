@@ -82,6 +82,18 @@ class HomeController
 }
 ```
 
+## 🧩 Extending MicroApp Class
+You can extend the `MicroApp` class to customize internal behavior — such as centralized error handling:
+
+```php
+class MyApp extends MicroApp {
+    protected function handleException(\Throwable $e): void {
+        error_log('Caught: ' . $e->getMessage());
+        self::json(['error' => 'Something went wrong'], 500);
+    }
+}
+```
+
 ## 🔽 Accessing Request Input
 You can use `MicroApp::input()` to safely retrieve and sanitize input from various sources:
 

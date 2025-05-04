@@ -11,24 +11,24 @@ class MicroApp {
         $this->basePath = rtrim($basePath, '/');
     }
 
-    public function get(string $route, callable $handler): void {
-        $this->routes['GET'][$this->normalize($route)] = $handler;
+    public function get(string $route, callable $handler, array $middleware = []): void {
+        $this->routes['GET'][$this->normalize($route)] = [$handler, $middleware];
     }
 
-    public function post(string $route, callable $handler): void {
-        $this->routes['POST'][$this->normalize($route)] = $handler;
+    public function post(string $route, callable $handler, array $middleware = []): void {
+        $this->routes['POST'][$this->normalize($route)] = [$handler, $middleware];
     }
 
-    public function put(string $route, callable $handler): void {
-        $this->routes['PUT'][$this->normalize($route)] = $handler;
+    public function put(string $route, callable $handler, array $middleware = []): void {
+        $this->routes['PUT'][$this->normalize($route)] = [$handler, $middleware];
     }
 
-    public function delete(string $route, callable $handler): void {
-        $this->routes['DELETE'][$this->normalize($route)] = $handler;
+    public function delete(string $route, callable $handler, array $middleware = []): void {
+        $this->routes['DELETE'][$this->normalize($route)] = [$handler, $middleware];
     }
 
-    public function patch(string $route, callable $handler): void {
-        $this->routes['PATCH'][$this->normalize($route)] = $handler;
+    public function patch(string $route, callable $handler, array $middleware = []): void {
+        $this->routes['PATCH'][$this->normalize($route)] = [$handler, $middleware];
     }
 
     public function getAllRoutes(): array
@@ -65,10 +65,17 @@ class MicroApp {
             $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
             $path = $this->normalize($path);
 
-            foreach ($this->routes[$method] ?? [] as $route => $handler) {
+            foreach ($this->routes[$method] ?? [] as $route => $entry) {
                 $params = [];
                 if ($this->match($route, $path, $params)) {
-                    $handler(...$params);
+                    // unpack handler + middleware
+                    if (is_array($entry) && array_key_exists(0, $entry)) {
+                        [$handler, $middleware] = $entry;
+                    } else {
+                        $handler    = $entry;
+                        $middleware = [];
+                    }
+                    $this->runThroughMiddleware($middleware, $params, $handler);
                     return;
                 }
             }
@@ -78,6 +85,23 @@ class MicroApp {
         } catch (\Throwable $e) {
             $this->handleException($e);
         }
+    }
+
+    private function runThroughMiddleware(array $middleware, array $params, callable $handler): void {
+        $next = static fn() => $handler(...$params);
+
+        foreach (array_reverse($middleware) as $mw) {
+            if (is_string($mw) && class_exists($mw)) {
+                $instance = new $mw();
+                $mw       = [$instance, 'handle'];
+            }
+            if (!is_callable($mw)) {
+                throw new \RuntimeException('Invalid middleware');
+            }
+            $next = static fn() => $mw($params, $next);
+        }
+
+        $next();
     }
 
     private function handleException(\Throwable $e): void {

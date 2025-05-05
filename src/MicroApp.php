@@ -80,7 +80,7 @@ class MicroApp
                 if (!class_exists($class) || !method_exists($class, 'routes')) {
                     continue;
                 }
-                foreach ((array) $class::routes() as $pattern) {
+                foreach ((array)$class::routes() as $pattern) {
                     $this->middleware[$this->normalize($pattern)][] = $class;
                 }
             } catch (\Throwable $e) {
@@ -112,10 +112,13 @@ class MicroApp
                 /* BEFORE middleware */
                 foreach ($this->middlewareFor($route) as $mw) {
                     if (method_exists($mw, 'before')) {
-                        (new $mw)->before($method, $path, $params);
+                        $ok = (new $mw)->before($method, $path, $params);
+                        // if middleware returns FALSE, stop dispatch here
+                        if ($ok === false) {
+                            return;
+                        }
                     }
                 }
-
                 /* Main handler */
                 $handler(...$params);
 
@@ -158,13 +161,13 @@ class MicroApp
         $response = [
             'error' => [
                 'error_id' => $id,
-                'code'     => 500,
-                'message'  => 'Internal Server Error',
-                'trace'    => (defined('APP_DEBUG') && APP_DEBUG) ? (string) $e : null,
+                'code' => 500,
+                'message' => 'Internal Server Error',
+                'trace' => (defined('APP_DEBUG') && APP_DEBUG) ? (string)$e : null,
             ],
         ];
         $log = $response;
-        $log['error']['trace'] = (string) $e;
+        $log['error']['trace'] = (string)$e;
         error_log('[' . date('Y-m-d H:i:s') . '] ' . json_encode($log, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $this->json($response, 500);
     }
@@ -178,7 +181,7 @@ class MicroApp
     private function match(string $route, string $path, array &$params): bool
     {
         $routeParts = explode('/', trim($route, '/'));
-        $pathParts  = explode('/', trim($path, '/'));
+        $pathParts = explode('/', trim($path, '/'));
         if (count($routeParts) !== count($pathParts)) {
             return false;
         }
@@ -211,19 +214,19 @@ class MicroApp
         static $json;
         $method = strtoupper($method);
         $sources = [
-            'GET'    => $_GET,
-            'POST'   => $_POST,
-            'JSON'   => $json = $json !== null ? $json : (json_decode(file_get_contents('php://input'), true) ?: []),
+            'GET' => $_GET,
+            'POST' => $_POST,
+            'JSON' => $json = $json !== null ? $json : (json_decode(file_get_contents('php://input'), true) ?: []),
             'HEADER' => function_exists('getallheaders') ? getallheaders() : [],
         ];
         $val = $sources[$method][$key] ?? null;
         return $filter === 'int'
-            ? (filter_var($val, FILTER_VALIDATE_INT) !== false ? (string)(int) $val : null)
+            ? (filter_var($val, FILTER_VALIDATE_INT) !== false ? (string)(int)$val : null)
             : ($filter === 'email'
                 ? filter_var($val, FILTER_VALIDATE_EMAIL) ?: null
                 : ($filter === 'url'
                     ? filter_var($val, FILTER_VALIDATE_URL) ?: null
-                    : htmlspecialchars(trim((string) $val), ENT_QUOTES, 'UTF-8')));
+                    : htmlspecialchars(trim((string)$val), ENT_QUOTES, 'UTF-8')));
     }
 
     public static function json(array $data, int $statusCode = 200): void

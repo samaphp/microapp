@@ -6,6 +6,7 @@ namespace MicroApp;
 class MicroApp {
     private array $routes = [];
     private string $basePath = '';
+    private array $middleware = [];
 
     public function __construct(string $basePath = '') {
         $this->basePath = rtrim($basePath, '/');
@@ -53,9 +54,23 @@ class MicroApp {
         }
     }
 
-    private function getClassFromFile(string $path, string $baseDir, string $namespace): string {
-        $relative = str_replace([$baseDir, '/', '.php'], ['', '\\', ''], $path);
-        return rtrim($namespace . '\\' . ltrim($relative, '\\'), '\\');
+    public function loadMiddlewareFrom(string $directory, string $namespace): void {
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+            try {
+                $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
+                if (!class_exists($class) || !method_exists($class, 'routes')) {
+                    continue;
+                }
+                foreach ((array)$class::routes() as $pattern) {
+                    $this->middleware[$this->normalize($pattern)][] = $class;
+                }
+            } catch (\Throwable $e) {
+                $this->handleException($e);
+            }
+        }
     }
 
     public function dispatch(): void {
@@ -67,10 +82,27 @@ class MicroApp {
 
             foreach ($this->routes[$method] ?? [] as $route => $handler) {
                 $params = [];
-                if ($this->match($route, $path, $params)) {
-                    $handler(...$params);
-                    return;
+                if (!$this->match($route, $path, $params)) {
+                    continue;
                 }
+
+                /* BEFORE middleware */
+                foreach ($this->middlewareFor($route) as $mw) {
+                    if (method_exists($mw, 'before')) {
+                        (new $mw)->before($method, $path, $params);
+                    }
+                }
+
+                /* Main handler */
+                $handler(...$params);
+
+                /* AFTER middleware */
+                foreach ($this->middlewareFor($route) as $mw) {
+                    if (method_exists($mw, 'after')) {
+                        (new $mw)->after($method, $path, $params);
+                    }
+                }
+                return;
             }
 
             http_response_code(404);
@@ -78,6 +110,19 @@ class MicroApp {
         } catch (\Throwable $e) {
             $this->handleException($e);
         }
+    }
+
+    private function middlewareFor(string $route): array
+    {
+        $global = $this->middleware['*'] ?? [];
+        $local = $this->middleware[$route] ?? [];
+        return array_merge($global, $local);
+    }
+
+    private function getClassFromFile(string $path, string $baseDir, string $namespace): string
+    {
+        $relative = str_replace([$baseDir, '/', '.php'], ['', '\\', ''], $path);
+        return rtrim($namespace . '\\' . ltrim($relative, '\\'), '\\');
     }
 
     private function handleException(\Throwable $e): void {
@@ -134,6 +179,5 @@ class MicroApp {
         http_response_code($statusCode);
         header('Content-Type: application/json');
         echo json_encode($data);
-        exit;
     }
 }

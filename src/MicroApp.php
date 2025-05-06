@@ -45,7 +45,7 @@ class MicroApp {
             try {
                 $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
                 if (class_exists($class) && method_exists($class, 'routes')) {
-                    (new $class())->routes($this);
+                    (new $class($this))->routes();
                 }
             } catch (\Throwable $e) {
                 $this->handleException($e);

@@ -115,8 +115,7 @@ class MicroApp {
         return true;
     }
 
-    public static function input(string $key, string $method = 'GET', string $filter = 'string'): ?string {
-        static $json;
+    public function input(string $key, string $method = 'GET', string $filter = 'string'): ?string {
         $method = strtoupper($method);
         $sources = [
             'GET' => $_GET, 'POST' => $_POST,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MicroApp;
 
 class MicroApp {
+    private array $request = [];
     private array $routes = [];
     private string $basePath = '';
 
@@ -56,6 +57,18 @@ class MicroApp {
     private function getClassFromFile(string $path, string $baseDir, string $namespace): string {
         $relative = str_replace([$baseDir, '/', '.php'], ['', '\\', ''], $path);
         return rtrim($namespace . '\\' . ltrim($relative, '\\'), '\\');
+    }
+
+    private function prepareRequest($method): void {
+        if (!isset($this->request['GET']) && ($method == 'GET')) $this->request['GET'] = $_GET;
+        if (!isset($this->request['POST']) && ($method == 'POST')) $this->request['POST'] = $_POST;
+        if (!isset($this->request['SERVER']) && ($method == 'SERVER')) $this->request['SERVER'] = $_SERVER;
+        if (!isset($this->request['HEADER']) && ($method == 'HEADER')) $this->request['HEADER'] = function_exists('getallheaders') ? getallheaders() : [];
+        if (!isset($this->request['JSON']) && ($method == 'JSON')) {
+            $raw = file_get_contents('php://input');
+            $this->request['BODY'] = $raw;
+            $this->request['JSON'] = json_decode($raw, true) ?: [];
+        }
     }
 
     public function dispatch(): void {
@@ -117,12 +130,8 @@ class MicroApp {
 
     public function input(string $key, string $method = 'GET', string $filter = 'string'): ?string {
         $method = strtoupper($method);
-        $sources = [
-            'GET' => $_GET, 'POST' => $_POST,
-            'JSON' => $json = $json !== null ? $json : (json_decode(file_get_contents('php://input'), true) ?: []),
-            'HEADER' => function_exists('getallheaders') ? getallheaders() : []
-        ];
-        $val = $sources[$method][$key] ?? null;
+        $this->prepareRequest($method);
+        $val = $this->request[$method][$key] ?? null;
         return $filter === 'int' ? (filter_var($val, FILTER_VALIDATE_INT) !== false ? (string)(int)$val : null)
             : ($filter === 'email' ? filter_var($val, FILTER_VALIDATE_EMAIL) ?: null
                 : ($filter === 'url' ? filter_var($val, FILTER_VALIDATE_URL) ?: null

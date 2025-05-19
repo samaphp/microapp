@@ -117,11 +117,15 @@ class MicroApp {
             header("$k: $v");
         }
         echo $this->response['body'];
-        exit;
+        $this->terminate();
     }
 
     public function jsonResponse(array $data, int $status = NULL): void {
         $this->setResponse(json_encode($data), $status, ['Content-Type' => 'application/json']);
+    }
+
+    protected function terminate(): void {
+        exit;
     }
 
     private function handleException(\Throwable $e): void {

@@ -103,7 +103,7 @@ Usage:
 ```php
 $name = MicroApp::input('name'); // GET by default
 $email = MicroApp::input('email', 'POST', 'email');
-$id = MicroApp::input('user_id', 'JSON', 'int');
+$id = MicroApp::input('user_id', 'BODY', 'int');
 $token = MicroApp::input('Authorization', 'HEADER');
 
 MicroApp::input(string $key, string $method = 'GET', string $filter = 'string')

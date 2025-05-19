@@ -7,7 +7,8 @@ Built for microservices that can live for decades without requiring upgrades or 
 ## 🌟 Features
 - ✅ `GET`, `POST`, `PUT`, `DELETE`, and `PATCH` method support
 - ✅ Named route parameters like `/user/{id}`
-- ✅ JSON response helper: `MicroApp::json(...)`
+- ✅ JSON response helper via `$app->jsonResponse()`
+- ✅ Centralized response lifecycle with override support
 - ✅ PSR-4 structure with Composer autoloading
 - ✅ Simple and readable one-file implementation
 - ✅ Ready to be used as a Composer package

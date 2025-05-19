@@ -8,6 +8,12 @@ class MicroApp {
     private array $routes = [];
     private string $basePath = '';
 
+    private array $response = [
+        'body' => '',
+        'status' => 200,
+        'headers' => [],
+    ];
+
     public function __construct(string $basePath = '') {
         $this->basePath = rtrim($basePath, '/');
     }
@@ -76,20 +82,43 @@ class MicroApp {
             $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
             $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
             $path = $this->normalize($path);
-
+            $matched = FALSE;
             foreach ($this->routes[$method] ?? [] as $route => $handler) {
                 $params = [];
                 if ($this->match($route, $path, $params)) {
                     $handler(...$params);
-                    return;
+                    $matched = TRUE;
+                    break;
                 }
             }
-
-            http_response_code(404);
-            echo '404 Not Found';
+            if (!$matched) {
+                $this->jsonResponse(['error' => ['code' => 404, 'message' => 'Not Found' ]], 404);
+            }
+            $this->sendResponse();
         } catch (\Throwable $e) {
             $this->handleException($e);
         }
+    }
+
+    public function setResponse(string $body, int $status = NULL, array $headers = []): void {
+        $this->response['body'] = $body;
+        if ($status !== NULL) {
+            $this->response['status'] = $status;
+        }
+        $this->response['headers'] = array_merge($this->response['headers'] ?? [], $headers);
+    }
+
+    private function sendResponse(): void {
+        http_response_code($this->response['status']);
+        foreach ($this->response['headers'] as $k => $v) {
+            header("$k: $v");
+        }
+        echo $this->response['body'];
+        exit;
+    }
+
+    public function jsonResponse(array $data, int $status = NULL): void {
+        $this->setResponse(json_encode($data), $status, ['Content-Type' => 'application/json']);
     }
 
     private function handleException(\Throwable $e): void {
@@ -103,7 +132,7 @@ class MicroApp {
         $log = $response;
         $log['error']['trace'] = (string)$e;
         error_log("[" . date('Y-m-d H:i:s') . "] " . json_encode($log, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $this->json($response, 500);
+        $this->jsonResponse($response, 500);
     }
 
     private function normalize(string $path): string {
@@ -135,12 +164,5 @@ class MicroApp {
             : ($filter === 'email' ? filter_var($val, FILTER_VALIDATE_EMAIL) ?: null
                 : ($filter === 'url' ? filter_var($val, FILTER_VALIDATE_URL) ?: null
                     : htmlspecialchars(trim((string)$val), ENT_QUOTES, 'UTF-8')));
-    }
-
-    public static function json(array $data, int $statusCode = 200): void {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit;
     }
 }

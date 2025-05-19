@@ -7,6 +7,7 @@ class MicroApp {
     private array $request = [];
     private array $routes = [];
     private string $basePath = '';
+    private bool $responseSent = FALSE;
 
     private array $response = [
         'body' => '',
@@ -101,6 +102,8 @@ class MicroApp {
     }
 
     public function setResponse(string $body, int $status = NULL, array $headers = []): void {
+        if ($this->responseSent) return;
+        $this->responseSent = TRUE;
         $this->response['body'] = $body;
         if ($status !== NULL) {
             $this->response['status'] = $status;

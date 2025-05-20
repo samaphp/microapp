@@ -46,19 +46,17 @@ class MicroApp {
         }
         $beforeList = is_array($before) ? $before : ($before !== null ? [$before] : []);
         $afterList  = is_array($after)  ? $after  : ($after !== null  ? [$after]  : []);
-        foreach ($this->routeMiddlewareBuffer['before'] ?? [] as $mw) {
-            $this->routeMiddleware[$method][$route]['before'][] = $mw;
-        }
-        foreach ($beforeList as $mw) {
-            $this->routeMiddleware[$method][$route]['before'][] = $mw;
-        }
-        foreach ($this->routeMiddlewareBuffer['after'] ?? [] as $mw) {
-            $this->routeMiddleware[$method][$route]['after'][] = $mw;
-        }
-        foreach ($afterList as $mw) {
-            $this->routeMiddleware[$method][$route]['after'][] = $mw;
-        }
-    }    
+        $this->routeMiddleware[$method][$route]['before'] = array_unique(array_merge(
+            $this->beforeMiddlewareQueue,
+            $this->routeMiddlewareBuffer['before'] ?? [],
+            $beforeList
+        ));
+        $this->routeMiddleware[$method][$route]['after'] = array_unique(array_merge(
+            $this->routeMiddlewareBuffer['after'] ?? [],
+            $afterList,
+            $this->afterMiddlewareQueue
+        ));
+    }
 
     public function before($middleware): void {
         $middlewares = is_array($middleware) ? $middleware : [$middleware];
@@ -145,11 +143,6 @@ class MicroApp {
             $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
             $path = $this->normalize($path);
 
-            foreach ($this->beforeMiddlewareQueue as $name) {
-                $this->runMiddleware($name);
-                if ($this->response['sent']) $this->sendResponse();
-            }
-
             $matched = false;
             foreach ($this->routes[$method] ?? [] as $route => $handler) {
                 $params = [];
@@ -165,10 +158,6 @@ class MicroApp {
                     }
                     break;
                 }
-            }
-
-            foreach ($this->afterMiddlewareQueue as $name) {
-                $this->runMiddleware($name);
             }
 
             if (!$matched && !$this->response['sent']) {

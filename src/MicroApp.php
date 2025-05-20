@@ -10,7 +10,7 @@ class MicroApp {
     private array $beforeMiddlewareQueue = [];
     private array $afterMiddlewareQueue = [];
     private array $middlewareRegistry = [];
-    private array $temporaryMiddlewareQueue = [];
+    private array $routeMiddlewareBuffer = [];
     private string $basePath = '';
     private array $response = [
         'body' => '',
@@ -43,13 +43,13 @@ class MicroApp {
         $this->routes[$method][$route] = $handler;
         $beforeList = is_array($before) ? $before : ($before !== null ? [$before] : []);
         $afterList  = is_array($after)  ? $after  : ($after !== null  ? [$after]  : []);
-        foreach ($this->temporaryMiddlewareQueue['before'] ?? [] as $mw) {
+        foreach ($this->routeMiddlewareBuffer['before'] ?? [] as $mw) {
             $this->routeMiddleware[$method][$route][] = $mw;
         }
         foreach ($beforeList as $before) {
             $this->routeMiddleware[$method][$route][] = $before;
         }
-        foreach ($this->temporaryMiddlewareQueue['after'] ?? [] as $mw) {
+        foreach ($this->routeMiddlewareBuffer['after'] ?? [] as $mw) {
             $this->routeMiddleware[$method][$route][] = $mw;
         }
         foreach ($afterList as $after) {
@@ -59,9 +59,9 @@ class MicroApp {
 
     public function before($middleware): void {
         $middlewares = is_array($middleware) ? $middleware : [$middleware];
-        if ($this->temporaryMiddlewareQueue !== []) {
+        if ($this->routeMiddlewareBuffer !== []) {
             foreach ($middlewares as $mw) {
-                $this->temporaryMiddlewareQueue['before'][] = $mw;
+                $this->routeMiddlewareBuffer['before'][] = $mw;
             }
         } else {
             foreach ($middlewares as $mw) {
@@ -71,9 +71,9 @@ class MicroApp {
     }
     public function after($middleware): void {
         $middlewares = is_array($middleware) ? $middleware : [$middleware];
-        if ($this->temporaryMiddlewareQueue !== []) {
+        if ($this->routeMiddlewareBuffer !== []) {
             foreach ($middlewares as $mw) {
-                $this->temporaryMiddlewareQueue['after'][] = $mw;
+                $this->routeMiddlewareBuffer['after'][] = $mw;
             }
         } else {
             foreach ($middlewares as $mw) {
@@ -112,9 +112,9 @@ class MicroApp {
             if ($file->getExtension() !== 'php') continue;
             $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
             if (class_exists($class) && method_exists($class, 'routes')) {
-                $this->temporaryMiddlewareQueue = ['before' => [], 'after' => []];
+                $this->routeMiddlewareBuffer = ['before' => [], 'after' => []];
                 (new $class($this))->routes();
-                $this->temporaryMiddlewareQueue = [];
+                $this->routeMiddlewareBuffer = [];
             }
         }
     }

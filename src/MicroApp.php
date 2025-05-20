@@ -188,7 +188,7 @@ class MicroApp {
         }
     }
 
-    public function getRequest(?string $section = null): array {
+    public function getRequest(string $section): array {
         $part = strtoupper($section);
         $this->prepareRequest($section);
         return $this->request[$section] ?? null;

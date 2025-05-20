@@ -6,37 +6,100 @@ namespace MicroApp;
 class MicroApp {
     private array $request = [];
     private array $routes = [];
+    private array $routeMiddleware = [];
+    private array $beforeMiddlewareQueue = [];
+    private array $afterMiddlewareQueue = [];
+    private array $middlewareRegistry = [];
+    private array $temporaryMiddlewareQueue = [];
     private string $basePath = '';
-    private bool $responseSent = FALSE;
-
     private array $response = [
         'body' => '',
         'status' => 200,
         'headers' => [],
+        'sent' => false,
     ];
 
     public function __construct(string $basePath = '') {
         $this->basePath = rtrim($basePath, '/');
     }
 
-    public function get(string $route, callable $handler): void {
-        $this->routes['GET'][$this->normalize($route)] = $handler;
+    public function get(string $route, callable $handler, $before = null, $after = null): void {
+        $this->registerRoute('GET', $route, $handler, $before, $after);
+    }
+    public function post(string $route, callable $handler, $before = null, $after = null): void {
+        $this->registerRoute('POST', $route, $handler, $before, $after);
+    }
+    public function put(string $route, callable $handler, $before = null, $after = null): void {
+        $this->registerRoute('PUT', $route, $handler, $before, $after);
+    }
+    public function delete(string $route, callable $handler, $before = null, $after = null): void {
+        $this->registerRoute('DELETE', $route, $handler, $before, $after);
+    }
+    public function patch(string $route, callable $handler, $before = null, $after = null): void {
+        $this->registerRoute('PATCH', $route, $handler, $before, $after);
+    }
+    private function registerRoute(string $method, string $route, callable $handler, $before = null, $after = null): void {
+        $route = $this->normalize($route);
+        $this->routes[$method][$route] = $handler;
+        $beforeList = is_array($before) ? $before : ($before !== null ? [$before] : []);
+        $afterList  = is_array($after)  ? $after  : ($after !== null  ? [$after]  : []);
+        foreach ($this->temporaryMiddlewareQueue['before'] ?? [] as $mw) {
+            $this->routeMiddleware[$method][$route][] = $mw;
+        }
+        foreach ($beforeList as $before) {
+            $this->routeMiddleware[$method][$route][] = $before;
+        }
+        foreach ($this->temporaryMiddlewareQueue['after'] ?? [] as $mw) {
+            $this->routeMiddleware[$method][$route][] = $mw;
+        }
+        foreach ($afterList as $after) {
+            $this->routeMiddleware[$method][$route][] = $after;
+        }
     }
 
-    public function post(string $route, callable $handler): void {
-        $this->routes['POST'][$this->normalize($route)] = $handler;
+    public function before($middleware): void {
+        $middlewares = is_array($middleware) ? $middleware : [$middleware];
+        if ($this->temporaryMiddlewareQueue !== []) {
+            foreach ($middlewares as $mw) {
+                $this->temporaryMiddlewareQueue['before'][] = $mw;
+            }
+        } else {
+            foreach ($middlewares as $mw) {
+                $this->beforeMiddlewareQueue[] = $mw;
+            }
+        }
+    }
+    public function after($middleware): void {
+        $middlewares = is_array($middleware) ? $middleware : [$middleware];
+        if ($this->temporaryMiddlewareQueue !== []) {
+            foreach ($middlewares as $mw) {
+                $this->temporaryMiddlewareQueue['after'][] = $mw;
+            }
+        } else {
+            foreach ($middlewares as $mw) {
+                $this->afterMiddlewareQueue[] = $mw;
+            }
+        }
+    }
+    public function loadMiddlewareFrom(string $directory, string $namespace): void {
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
+            if ($file->getExtension() !== 'php') continue;
+            $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
+            if (class_exists($class)) {
+                $shortName = (new \ReflectionClass($class))->getShortName(); // e.g. "AuthMiddleware"
+                $name = strtolower(preg_replace('/Middleware$/', '', $shortName)); // → "auth"
+                $this->middlewareRegistry[$name] = $class;
+            }
+        }
     }
 
-    public function put(string $route, callable $handler): void {
-        $this->routes['PUT'][$this->normalize($route)] = $handler;
-    }
-
-    public function delete(string $route, callable $handler): void {
-        $this->routes['DELETE'][$this->normalize($route)] = $handler;
-    }
-
-    public function patch(string $route, callable $handler): void {
-        $this->routes['PATCH'][$this->normalize($route)] = $handler;
+    public function getMiddlewares(): array {
+        return [
+            'registry' => $this->middlewareRegistry,
+            'global_before' => $this->beforeMiddlewareQueue,
+            'global_after' => $this->afterMiddlewareQueue,
+            'routes' => $this->routeMiddleware,
+        ];
     }
 
     public function getAllRoutes(): array
@@ -46,17 +109,12 @@ class MicroApp {
 
     public function loadRoutesFrom(string $directory, string $namespace): void {
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
-            if ($file->getExtension() !== 'php') {
-                continue;
-            }
-
-            try {
-                $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
-                if (class_exists($class) && method_exists($class, 'routes')) {
-                    (new $class($this))->routes();
-                }
-            } catch (\Throwable $e) {
-                $this->handleException($e);
+            if ($file->getExtension() !== 'php') continue;
+            $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
+            if (class_exists($class) && method_exists($class, 'routes')) {
+                $this->temporaryMiddlewareQueue = ['before' => [], 'after' => []];
+                (new $class($this))->routes();
+                $this->temporaryMiddlewareQueue = [];
             }
         }
     }
@@ -83,32 +141,89 @@ class MicroApp {
             $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
             $path = (empty($this->basePath) || strpos($path, $this->basePath) !== 0) ? $path : substr($path, strlen($this->basePath));
             $path = $this->normalize($path);
-            $matched = FALSE;
+
+            foreach ($this->beforeMiddlewareQueue as $name) {
+                $this->runMiddleware($name);
+                if ($this->response['sent']) $this->sendResponse();
+            }
+
+            $matched = false;
             foreach ($this->routes[$method] ?? [] as $route => $handler) {
                 $params = [];
                 if ($this->match($route, $path, $params)) {
+                    $matched = true;
+                    foreach ($this->routeMiddleware[$method][$route] ?? [] as $mw) {
+                        $this->runMiddleware($mw);
+                        if ($this->response['sent']) $this->sendResponse();
+                    }
                     $handler(...$params);
-                    $matched = TRUE;
+                    foreach ($this->routeMiddleware[$method][$route]['after'] ?? [] as $mw) {
+                        $this->runMiddleware($mw);
+                    }
                     break;
                 }
             }
-            if (!$matched) {
-                $this->jsonResponse(['error' => ['code' => 404, 'message' => 'Not Found' ]], 404);
+
+            foreach ($this->afterMiddlewareQueue as $name) {
+                $this->runMiddleware($name);
             }
+
+            if (!$matched && !$this->response['sent']) {
+                $this->jsonResponse(['error' => ['code' => 404, 'message' => 'Not Found']], 404);
+            }
+
             $this->sendResponse();
         } catch (\Throwable $e) {
             $this->handleException($e);
         }
     }
 
-    public function setResponse(string $body, int $status = NULL, array $headers = []): void {
-        if ($this->responseSent) return;
-        $this->responseSent = TRUE;
+    private function runMiddleware(string $name): void {
+        $key = strtolower($name);
+        if (isset($this->middlewareRegistry[$key])) {
+            (new $this->middlewareRegistry[$key])($this);
+        }
+        else {
+            throw new \InvalidArgumentException("Middleware not found: $name");
+        }
+    }
+
+    public function getRequest(?string $section = null): array {
+        $part = strtoupper($section);
+        $this->prepareRequest($section);
+        return $this->request[$section] ?? null;
+    }
+
+    public function getRequestHeader(string $key): ?string {
+        $this->prepareRequest('HEADER');
+        foreach ($this->request['HEADER'] ?? [] as $k => $v) {
+            if (strcasecmp($k, $key) === 0) {
+                return $v;
+            }
+        }
+        return null;
+    }
+
+    public function addResponseHeader(string $key, string $value): void {
+        $this->response['headers'][$key] = $value;
+    }
+
+    public function getResponse(): array {
+        return $this->response;
+    }
+
+    public function setResponse(string $body, int $status = null, array $headers = [], bool $force = false): void {
+        if (($this->response['sent'] ?? false) && !$force) return;
+        $this->response['sent'] = true;
         $this->response['body'] = $body;
         if ($status !== NULL) {
             $this->response['status'] = $status;
         }
         $this->response['headers'] = array_merge($this->response['headers'] ?? [], $headers);
+    }
+
+    public function jsonResponse(array $data, int $status = null, bool $force = false): void {
+        $this->setResponse(json_encode($data), $status, ['Content-Type' => 'application/json'], $force);
     }
 
     private function sendResponse(): void {
@@ -118,10 +233,6 @@ class MicroApp {
         }
         echo $this->response['body'];
         $this->terminate();
-    }
-
-    public function jsonResponse(array $data, int $status = NULL): void {
-        $this->setResponse(json_encode($data), $status, ['Content-Type' => 'application/json']);
     }
 
     protected function terminate(): void {

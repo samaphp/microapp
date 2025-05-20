@@ -136,6 +136,35 @@ Parameters:
 - `method`: One of 'GET', 'POST', 'JSON', or 'HEADER'.
 - `filter`: Sanitization type: 'string', 'int' or 'email'.
 
+## 🟦 Accessing Headers
+
+To retrieve a request header (case-insensitive):
+
+```php
+$auth = $app->getRequestHeader('Authorization');
+```
+To set a response header:
+
+```php
+$app->addResponseHeader('X-Custom-Header', 'value');
+```
+
+## 🧪 Public API Reference
+
+MicroApp exposes a set of simple, well-defined public methods:
+
+- `before()`/`after()` – Define global or per-controller middleware hooks.
+- `setResponse()` – Define a custom response body and can be used for Text/HTML response, status, and headers.
+- `jsonResponse()` – Send a JSON response with optional status code.
+- `getResponse()` – Retrieve the full response array (body, status, headers).
+- `getRequest()` – Get a specific request section and inputs (GET, POST, HEADER, etc.).
+- `getRequestHeader()` – Retrieve a specific request header.
+- `addResponseHeader()` – Add or override a response header.
+- `getAllRoutes()` – Debug utility to list all registered routes.
+- `getMiddlewares()` – Debug utility to inspect middleware configuration.
+
+These methods form the MicroApp API surface and are safe to use directly from controllers or custom logic.
+
 ## 🛣️ Roadmap
 MicroApp aims to remain minimal and dependency-free while gradually improving developer experience and production readiness.
 

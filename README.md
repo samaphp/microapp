@@ -14,6 +14,7 @@ Built for microservices that can live for decades without requiring upgrades or 
 - ✅ Ready to be used as a Composer package
 - ✅ Auto-discovery of controller classes with route definitions inside the class itself
 - ✅ Optional CLI available via the `microapp-dev` package
+- ✅ Middleware (before/after) for logging, authentication, CSRF protection, and other cross-cutting concerns
 
 ## 🚀 Getting Started
 - Install via Composer: `composer require samaphp/microapp`
@@ -83,6 +84,28 @@ class HomeController
     }
 }
 ```
+## 🧩 Middleware Support
+
+Middleware are invoked as class instances with `__invoke(MicroApp $app)` support.
+They can inspect the request, modify headers, or override the response.
+
+You can register global or route-specific middleware to execute custom logic **before** or **after** your routes.
+
+### 🔹 Global Middleware
+You can apply middleware from the `index.php` file:
+```php
+$app->before('auth'); // Runs before all routes if inserted in index.php or at the beganning of controller routes() method.
+$app->after('logger'); // Runs after all routes if inserted in index.php or at the beganning of controller routes() method.
+```
+
+### 🔹 Route Middleware
+```php
+$app->get('/admin', [$this, 'admin'], 'auth', 'audit');
+// 'auth' will run before the handler
+// 'audit' will run after the handler
+// or applying multiple middlewares per route
+$app->get('/admin', [$this, 'admin'], ['auth', 'admin']);
+```
 
 ## 🧩 Extending MicroApp Class
 You can extend the `MicroApp` class to customize internal behavior — such as centralized error handling:
@@ -118,10 +141,11 @@ MicroApp aims to remain minimal and dependency-free while gradually improving de
 
 ### ✅ Core Roadmap
 
-- 🔹 **Middleware (before/after)** for logging, authentication, CSRF protection, and other cross-cutting concerns
+- ✅ ~**Middleware (before/after)** for logging, authentication, CSRF protection, and other cross-cutting concerns~
 - 🔹 **PHP 8+ Compatibility Check** — audit for deprecated functions to ensure forward compatibility
 - 🔹 **SQLite Support** for lightweight, embedded persistence (potentially via a dedicated utility package)
 - 🔹 **File Storage / Upload Handling** for managing uploaded files and saving them to disk  (potentially via a dedicated utility package)
+- 🔹 **Standards-Based Middleware** implement PSR-15 with minimal PSR-7 support (potentially via a dedicated utility package).
 
 ### 🧠 Under Consideration
 

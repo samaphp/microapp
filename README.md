@@ -218,6 +218,9 @@ The following are intentionally left out of the core to preserve MicroApp’s no
 
 - ❌ **Config File Support** Loading `.env` files or configuration files is out of scope for the core. If needed, you can use a community-maintained package such as `vlucas/phpdotenv`.
 
+### 🧼 Clean principles to follow
+
+- If it's just one line wrapping an existing method, and it’s not used internally, don’t include it in the core.
 
 ## 🚧 Disclaimer
 

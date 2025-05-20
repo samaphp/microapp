@@ -41,21 +41,24 @@ class MicroApp {
     private function registerRoute(string $method, string $route, callable $handler, $before = null, $after = null): void {
         $route = $this->normalize($route);
         $this->routes[$method][$route] = $handler;
+        if (!isset($this->routeMiddleware[$method][$route])) {
+            $this->routeMiddleware[$method][$route] = ['before' => [], 'after' => []];
+        }
         $beforeList = is_array($before) ? $before : ($before !== null ? [$before] : []);
         $afterList  = is_array($after)  ? $after  : ($after !== null  ? [$after]  : []);
         foreach ($this->routeMiddlewareBuffer['before'] ?? [] as $mw) {
-            $this->routeMiddleware[$method][$route][] = $mw;
+            $this->routeMiddleware[$method][$route]['before'][] = $mw;
         }
-        foreach ($beforeList as $before) {
-            $this->routeMiddleware[$method][$route][] = $before;
+        foreach ($beforeList as $mw) {
+            $this->routeMiddleware[$method][$route]['before'][] = $mw;
         }
         foreach ($this->routeMiddlewareBuffer['after'] ?? [] as $mw) {
-            $this->routeMiddleware[$method][$route][] = $mw;
+            $this->routeMiddleware[$method][$route]['after'][] = $mw;
         }
-        foreach ($afterList as $after) {
-            $this->routeMiddleware[$method][$route][] = $after;
+        foreach ($afterList as $mw) {
+            $this->routeMiddleware[$method][$route]['after'][] = $mw;
         }
-    }
+    }    
 
     public function before($middleware): void {
         $middlewares = is_array($middleware) ? $middleware : [$middleware];
@@ -152,7 +155,7 @@ class MicroApp {
                 $params = [];
                 if ($this->match($route, $path, $params)) {
                     $matched = true;
-                    foreach ($this->routeMiddleware[$method][$route] ?? [] as $mw) {
+                    foreach ($this->routeMiddleware[$method][$route]['before'] ?? [] as $mw) {
                         $this->runMiddleware($mw);
                         if ($this->response['sent']) $this->sendResponse();
                     }

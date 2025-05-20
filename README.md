@@ -175,6 +175,7 @@ MicroApp aims to remain minimal and dependency-free while gradually improving de
 - 🔹 **SQLite Support** for lightweight, embedded persistence (potentially via a dedicated utility package)
 - 🔹 **File Storage / Upload Handling** for managing uploaded files and saving them to disk  (potentially via a dedicated utility package)
 - 🔹 **Standards-Based Middleware** implement PSR-15 with minimal PSR-7 support (potentially via a dedicated utility package).
+- 🔹 **Lazy Route Registration** — defer loading route definitions until needed during dispatch. Reduces memory footprint and improves cold start times
 
 ### 🧠 Under Consideration
 

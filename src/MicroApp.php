@@ -251,6 +251,8 @@ class MicroApp {
         $log['error']['trace'] = (string)$e;
         error_log("[" . date('Y-m-d H:i:s') . "] " . json_encode($log, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $this->jsonResponse($response, 500);
+        $this->sendResponse();
+        $this->terminate();
     }
 
     private function normalize(string $path): string {

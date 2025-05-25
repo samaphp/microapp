@@ -170,7 +170,10 @@ class MicroApp {
         }
     }
 
-    private function runMiddleware(string $name): void {
+    private function runMiddleware($name): void {
+        if (is_callable($name)) {
+            $name($this);
+        }
         $key = strtolower($name);
         if (isset($this->middlewareRegistry[$key])) {
             (new $this->middlewareRegistry[$key])($this);

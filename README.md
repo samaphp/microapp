@@ -117,6 +117,32 @@ $this->app->get('/ping', function () {
 > ⚠️ Best Practice:
 > While calling middleware from internal methods is supported (since they are callable), it’s strongly recommended to define middleware as standalone classes under `App\Middleware`. This keeps your codebase clean, modular, and reusable across routes.
 
+### 🟨 Middleware Example
+Your middleware class should be placed in the `src/Middleware` directory and follow the PSR-4 autoloading standard. Middleware must implement the `__invoke` method and receive the `MicroApp` instance.
+
+For example, if you create a middleware named `SecretPasswordMiddleware.php`, it should look like this:
+
+```php
+<?php
+namespace App\Middleware;
+
+use MicroApp\MicroApp;
+
+class SecretPasswordMiddleware
+{
+    public function __invoke(MicroApp $app): void
+    {
+        $key = $app->input('secret');
+
+        if ($key !== '123') {
+            $app->jsonResponse([
+                'error' => ['code' => 401, 'message' => 'Unauthorized']
+            ], 401);
+        }
+    }
+}
+```
+
 ## 🧩 Extending MicroApp Class
 You can extend the `MicroApp` class to customize internal behavior — such as centralized error handling:
 

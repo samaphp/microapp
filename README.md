@@ -100,12 +100,22 @@ $app->after('logger'); // Runs after all routes if inserted in index.php or at t
 
 ### 🔹 Route Middleware
 ```php
-$app->get('/admin', [$this, 'admin'], 'auth', 'audit');
 // 'auth' will run before the handler
 // 'audit' will run after the handler
+$app->get('/admin', [$this, 'admin'], 'auth', 'audit');
 // or applying multiple middlewares per route
-$app->get('/admin', [$this, 'admin'], ['auth', 'admin']);
+$app->get('/admin', [$this, 'admin'], ['auth', 'admin'], 'audit');
+// You can also define quick inline routes using closures
+$this->app->get('/ping', function () {
+    $this->app->setResponse('pong');
+});
+// Or attach a middleware inline from within the same controller
+$this->app->get('/ping', function () {
+    $this->app->setResponse('pong');
+}, $this->ExampleInternalMiddleware());
 ```
+> ⚠️ Best Practice:
+> While calling middleware from internal methods is supported (since they are callable), it’s strongly recommended to define middleware as standalone classes under `App\Middleware`. This keeps your codebase clean, modular, and reusable across routes.
 
 ## 🧩 Extending MicroApp Class
 You can extend the `MicroApp` class to customize internal behavior — such as centralized error handling:

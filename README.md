@@ -14,6 +14,7 @@ Built for microservices that can live for decades without requiring upgrades or 
 - ✅ Ready to be used as a Composer package
 - ✅ Auto-discovery of controller classes with route definitions inside the class itself
 - ✅ Optional CLI available via the `microapp-dev` package
+- ✅ Middleware (before/after) for logging, authentication, CSRF protection, and other cross-cutting concerns
 
 ## 🚀 Getting Started
 - Install via Composer: `composer require samaphp/microapp`
@@ -83,6 +84,64 @@ class HomeController
     }
 }
 ```
+## 🧩 Middleware Support
+
+Middleware are invoked as class instances with `__invoke(MicroApp $app)` support.
+They can inspect the request, modify headers, or override the response.
+
+You can register global or route-specific middleware to execute custom logic **before** or **after** your routes.
+
+### 🔹 Global Middleware
+You can apply middleware from the `index.php` file:
+```php
+$app->before('auth'); // Runs before all routes if inserted in index.php or at the beganning of controller routes() method.
+$app->after('logger'); // Runs after all routes if inserted in index.php or at the beganning of controller routes() method.
+```
+
+### 🔹 Route Middleware
+```php
+// 'auth' will run before the handler
+// 'audit' will run after the handler
+$app->get('/admin', [$this, 'admin'], 'auth', 'audit');
+// or applying multiple middlewares per route
+$app->get('/admin', [$this, 'admin'], ['auth', 'admin'], 'audit');
+// You can also define quick inline routes using closures
+$this->app->get('/ping', function () {
+    $this->app->setResponse('pong');
+});
+// Or attach a middleware inline from within the same controller
+$this->app->get('/ping', function () {
+    $this->app->setResponse('pong');
+}, $this->ExampleInternalMiddleware());
+```
+> ⚠️ Best Practice:
+> While calling middleware from internal methods is supported (since they are callable), it’s strongly recommended to define middleware as standalone classes under `App\Middleware`. This keeps your codebase clean, modular, and reusable across routes.
+
+### 🟨 Middleware Example
+Your middleware class should be placed in the `src/Middleware` directory and follow the PSR-4 autoloading standard. Middleware must implement the `__invoke` method and receive the `MicroApp` instance.
+
+For example, if you create a middleware named `SecretPasswordMiddleware.php`, it should look like this:
+
+```php
+<?php
+namespace App\Middleware;
+
+use MicroApp\MicroApp;
+
+class SecretPasswordMiddleware
+{
+    public function __invoke(MicroApp $app): void
+    {
+        $key = $app->input('secret');
+
+        if ($key !== '123') {
+            $app->jsonResponse([
+                'error' => ['code' => 401, 'message' => 'Unauthorized']
+            ], 401);
+        }
+    }
+}
+```
 
 ## 🧩 Extending MicroApp Class
 You can extend the `MicroApp` class to customize internal behavior — such as centralized error handling:
@@ -113,15 +172,49 @@ Parameters:
 - `method`: One of 'GET', 'POST', 'JSON', or 'HEADER'.
 - `filter`: Sanitization type: 'string', 'int' or 'email'.
 
+## 🟦 Accessing Headers
+
+To retrieve a request header (case-insensitive):
+
+```php
+$auth = $app->getRequestHeader('Authorization');
+```
+To set a response header:
+
+```php
+$app->addResponseHeader('X-Custom-Header', 'value');
+```
+
+## 🧪 Public API Reference
+
+MicroApp exposes a set of simple, well-defined public methods:
+
+- `before()`/`after()` – Define global or per-controller middleware hooks.
+- `setResponse()` – Define a custom response body and can be used for Text/HTML response, status, and headers.
+- `jsonResponse()` – Send a JSON response with optional status code.
+- `getResponse()` – Retrieve the full response array (body, status, headers).
+- `getRequest()` – Get a specific request section and inputs (GET, POST, HEADER, etc.).
+- `getRequestHeader()` – Retrieve a specific request header.
+- `addResponseHeader()` – Add or override a response header.
+- `getAllRoutes()` – Debug utility to list all registered routes.
+- `getMiddlewares()` – Debug utility to inspect middleware configuration.
+
+These methods form the MicroApp API surface and are safe to use directly from controllers or custom logic.
+
 ## 🛣️ Roadmap
 MicroApp aims to remain minimal and dependency-free while gradually improving developer experience and production readiness.
 
 ### ✅ Core Roadmap
 
-- 🔹 **Middleware (before/after)** for logging, authentication, CSRF protection, and other cross-cutting concerns
+- ✅ ~**Middleware (before/after)** for logging, authentication, CSRF protection, and other cross-cutting concerns~
 - 🔹 **PHP 8+ Compatibility Check** — audit for deprecated functions to ensure forward compatibility
 - 🔹 **SQLite Support** for lightweight, embedded persistence (potentially via a dedicated utility package)
 - 🔹 **File Storage / Upload Handling** for managing uploaded files and saving them to disk  (potentially via a dedicated utility package)
+- 🔹 **Standards-Based Middleware** implement PSR-15 with minimal PSR-7 support (potentially via a dedicated utility package).
+- 🔹 **Lazy Route Registration** — defer loading route definitions until needed during dispatch. Reduces memory footprint and improves cold start times
+- 🔹 **Middleware chain** middleware chaining. and `middlewareGroup` to allow for `adminOnly` to have multiple middlewares applied
+- 🔹 **Code ehancements** Shortcuts for Early Return return `$app->abort(403, 'Forbidden');` or `redirect()`
+- 🔹 **Shared request context** Allow injecting state	Use `$app->context['key'] = value`
 
 ### 🧠 Under Consideration
 
@@ -165,6 +258,9 @@ The following are intentionally left out of the core to preserve MicroApp’s no
 
 - ❌ **Config File Support** Loading `.env` files or configuration files is out of scope for the core. If needed, you can use a community-maintained package such as `vlucas/phpdotenv`.
 
+### 🧼 Clean principles to follow
+
+- If it's just one line wrapping an existing method, and it’s not used internally, don’t include it in the core.
 
 ## 🚧 Disclaimer
 

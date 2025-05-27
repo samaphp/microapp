@@ -94,6 +94,7 @@ class MicroApp {
         }
     }
     public function loadMiddlewareFrom(string $directory, string $namespace): void {
+        if (!is_dir($directory)) return;
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
             if ($file->getExtension() !== 'php') continue;
             $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);
@@ -120,6 +121,7 @@ class MicroApp {
     }
 
     public function loadRoutesFrom(string $directory, string $namespace): void {
+        if (!is_dir($directory)) return;
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
             if ($file->getExtension() !== 'php') continue;
             $class = $this->getClassFromFile($file->getPathname(), $directory, $namespace);

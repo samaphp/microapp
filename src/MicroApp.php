@@ -11,6 +11,7 @@ class MicroApp {
     private array $afterMiddlewareQueue = [];
     private array $middlewareRegistry = [];
     private array $routeMiddlewareBuffer = [];
+    private array $serviceContainer = [];
     private string $basePath = '';
     private array $response = [
         'body' => '',
@@ -56,6 +57,16 @@ class MicroApp {
             $afterList,
             $this->afterMiddlewareQueue
         ));
+    }
+
+    public function registerService(string $name, $instance): void {
+        $this->serviceContainer[$name] = $instance;
+    }
+    public function getService(string $name) {
+        if (!array_key_exists($name, $this->serviceContainer)) {
+            throw new \RuntimeException("Service '$name' not found.");
+        }
+        return $this->serviceContainer[$name];
     }
 
     public function before($middleware): void {

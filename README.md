@@ -143,6 +143,40 @@ class SecretPasswordMiddleware
 }
 ```
 
+## 🔧 Service Injection (Minimalist, Explicit)
+
+MicroApp provides a clean and explicit way to register and access services using `registerService()` and `getService()` methods. This allows controllers and middleware to share reusable services like loggers, configuration, or database connections — while respecting the principle of command-query separation.
+
+---
+
+### ✅ How It Works
+
+- **Register a service** using `$app->registerService('name', $instance)`
+- **Retrieve a service** using `$app->getService('name')`
+- Works both globally and dynamically inside route handlers and middleware
+
+---
+
+### 🏁 Registering Services
+
+```php
+// from index.php
+$app->registerService('logger', new Logger());
+
+// from controller/middleware classes
+$this->app->registerService('logger', new Logger());
+```
+
+### 🧠 Accessing Services
+```php
+$logger = $this->app->getService('logger');
+```
+
+### 🧼 Notes
+- Calling `registerService()` with the same name will override the existing service.
+- `getService()` throws a `RuntimeException` if the service is not found.
+- Designed for simplicity — no external container or auto-wiring required.
+
 ## 🧩 Extending MicroApp Class
 You can extend the `MicroApp` class to customize internal behavior — such as centralized error handling:
 

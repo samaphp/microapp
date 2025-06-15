@@ -143,9 +143,10 @@ class MicroApp {
         if (!isset($this->request['POST']) && ($method == 'POST')) $this->request['POST'] = $_POST;
         if (!isset($this->request['SERVER']) && ($method == 'SERVER')) $this->request['SERVER'] = $_SERVER;
         if (!isset($this->request['HEADER']) && ($method == 'HEADER')) $this->request['HEADER'] = function_exists('getallheaders') ? getallheaders() : [];
-        if (!isset($this->request['BODY']) && ($method == 'BODY')) {
+        if ((!isset($this->request['BODY']) && ($method == 'BODY')) || (!isset($this->request['JSON']) && ($method == 'JSON'))) {
             $raw = file_get_contents('php://input');
             $this->request['BODY'] = $raw;
+            if ($method == 'JSON') $this->request['JSON'] = json_decode($raw, true);
         }
     }
 
